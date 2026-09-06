@@ -1,0 +1,47 @@
+@page
+@model OfficeItemsManagement.Web.Pages.StockQueryModel
+@{
+    ViewData["Title"] = "库存查询";
+}
+
+<div class="card">
+    <div class="card-header">物品库存查询</div>
+    <div class="card-body">
+        <table>
+            <thead>
+                <tr>
+                    <th>物品编码</th>
+                    <th>物品名称</th>
+                    <th>类别</th>
+                    <th>产地</th>
+                    <th>规格</th>
+                    <th>型号</th>
+                    <th>库存数量</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Items != null && Model.Items.Any())
+                {
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.ItemCode</td>
+                            <td>@item.ItemName</td>
+                            <td>@item.CategoryName</td>
+                            <td>@item.Origin</td>
+                            <td>@item.Specification</td>
+                            <td>@item.Model</td>
+                            <td style="font-weight:bold; color:@(item.Quantity == 0 ? "red" : "inherit")">
+                                @item.Quantity
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="7" style="text-align:center;color:#888">暂无物品数据</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
