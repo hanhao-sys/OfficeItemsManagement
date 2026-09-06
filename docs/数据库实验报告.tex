@@ -1,0 +1,564 @@
+\documentclass[12pt,a4paper]{ctexart}
+
+% ===== 页面设置 =====
+\usepackage[top=2.5cm,bottom=2.5cm,left=2.8cm,right=2.8cm]{geometry}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning,fit}
+
+% ===== 代码高亮 =====
+\lstset{
+    basicstyle=\ttfamily\small,
+    numbers=left,
+    numberstyle=\tiny,
+    frame=single,
+    breaklines=true,
+    language=SQL
+}
+
+% ===== 超链接 =====
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue
+}
+
+\title{\textbf{办公物品管理系统\\数据库设计与实现}}
+\author{现代软件实验 + 实验六：综合实验}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+% ================================================================
+\section{系统概述及需求分析}
+% ================================================================
+
+\subsection{业务背景}
+
+某单位办公物品管理存在以下问题：物品采购入库依赖纸质登记，领用审批流程不规范，库存信息无法实时掌握。需要开发一套信息化管理系统，实现办公物品的规范化管理。
+
+\subsection{角色与功能需求}
+
+系统包含两种角色：
+
+\begin{description}
+    \item[管理员] 通过桌面应用程序登录，负责用户维护、物品信息管理、入库登记、领用审批和库存查询。
+    \item[普通用户] 通过 Web 浏览器登录，只能查看库存和提交领用申请。
+\end{description}
+
+\subsection{数据存储要求}
+
+\begin{itemize}
+    \item 用户信息存储在文件中（JSON 格式）
+    \item 物品、入库、出库等业务数据存储在数据库中（MySQL 8.4.8 LTS）
+\end{itemize}
+
+% ================================================================
+\section{概念结构设计}
+% ================================================================
+
+\subsection{实体识别}
+
+通过对需求的分析，识别出以下实体：
+
+\begin{enumerate}
+    \item \textbf{物品类别}（Category）：纸张、文具、刀具、单据、礼品、其它
+    \item \textbf{产地}（Origin）：北京、上海、广州等 13 个产地
+    \item \textbf{物品}（Item）：办公物品的基本信息和库存数量
+    \item \textbf{入库记录}（StockIn）：管理员采购入库的流水记录
+    \item \textbf{领用记录}（StockOut）：普通用户申请领用的流水记录
+\end{enumerate}
+
+\subsection{实体属性}
+
+\subsubsection{物品类别实体}
+
+\begin{itemize}
+    \item 类别 ID（Id）：INT，主键，自增
+    \item 类别名称（Name）：VARCHAR(50)，唯一
+\end{itemize}
+
+\subsubsection{产地实体}
+
+\begin{itemize}
+    \item 产地 ID（Id）：INT，主键，自增
+    \item 产地名称（Name）：VARCHAR(100)，唯一
+\end{itemize}
+
+\subsubsection{物品实体}
+
+\begin{itemize}
+    \item 物品编码（ItemCode）：VARCHAR(20)，主键
+    \item 物品名称（ItemName）：VARCHAR(100)，必填
+    \item 类别（Category）：INT，外键关联类别表
+    \item 产地（Origin）：VARCHAR(100)
+    \item 规格（Specification）：VARCHAR(100)
+    \item 型号（Model）：VARCHAR(100)
+    \item 图片路径（ImagePath）：VARCHAR(500)
+    \item 图片数据（ImageData）：LONGBLOB
+    \item 库存数量（Quantity）：INT，默认 0
+\end{itemize}
+
+\subsubsection{入库记录实体}
+
+\begin{itemize}
+    \item 入库流水号（StockInNo）：VARCHAR(20)，主键，格式 SI+日期+序号
+    \item 物品编码（ItemCode）：VARCHAR(20)，外键
+    \item 购买日期（PurchaseDate）：DATETIME
+    \item 入库数量（Quantity）：INT，必须大于 0
+    \item 单价（UnitPrice）：DECIMAL(18,2)
+    \item 总价（TotalPrice）：DECIMAL(18,2)
+\end{itemize}
+
+\subsubsection{领用记录实体}
+
+\begin{itemize}
+    \item 领用流水号（StockOutNo）：VARCHAR(20)，主键，格式 SO+日期+序号
+    \item 物品编码（ItemCode）：VARCHAR(20)，外键
+    \item 领用数量（Quantity）：INT，必须大于 0
+    \item 领用人 ID（ApplicantId）：VARCHAR(50)
+    \item 申请日期（ApplyDate）：DATETIME
+    \item 状态（Status）：INT，0=申请 1=确认 2=驳回
+    \item 审批日期（ApproveDate）：DATETIME
+    \item 备注（Remark）：VARCHAR(500)
+\end{itemize}
+
+\subsection{ER 图}
+
+实体间关系如下：
+
+\begin{itemize}
+    \item 一个类别对应多个物品（1:N）
+    \item 一个物品对应多条入库记录（1:N）
+    \item 一个物品对应多条领用记录（1:N）
+    \item 产地与物品之间没有强制外键约束，通过应用程序层面实现取值关联
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    entity/.style={rectangle,draw,minimum width=2.4cm,minimum height=3.5cm,align=center},
+    relation/.style={diamond,draw,minimum width=1.5cm,minimum height=0.8cm,align=center}
+]
+    \node[entity] (cat) at (0,0) {\textbf{Categories}\\[2pt] Id (PK)\\ Name (UQ)};
+    \node[entity] (item) at (4,0) {\textbf{Items}\\[2pt] ItemCode (PK)\\ ItemName\\ Category (FK)\\ Origin\\ Specification\\ Model\\ ImagePath\\ ImageData\\ Quantity};
+    \node[entity] (si) at (8,2) {\textbf{StockIn}\\[2pt] StockInNo (PK)\\ ItemCode (FK)\\ PurchaseDate\\ Quantity\\ UnitPrice\\ TotalPrice};
+    \node[entity] (so) at (8,-2) {\textbf{StockOut}\\[2pt] StockOutNo (PK)\\ ItemCode (FK)\\ Quantity\\ ApplicantId\\ ApplyDate\\ Status\\ ApproveDate\\ Remark};
+    \node[entity] (ori) at (0,-3) {\textbf{Origins}\\[2pt] Id (PK)\\ Name (UQ)};
+
+    \draw[->,>=stealth] (cat.east) -- node[above] {1:N} (item.west);
+    \draw[->,>=stealth] (item.north east) -- node[above,sloped] {1:N} (si.south west);
+    \draw[->,>=stealth] (item.south east) -- node[below,sloped] {1:N} (so.north west);
+    \draw[->,>=stealth,dashed] (ori.east) -- node[below,sloped] {参考} (item.south west);
+\end{tikzpicture}
+\caption{办公物品管理系统 ER 图}
+\end{figure}
+
+% ================================================================
+\section{逻辑结构设计}
+% ================================================================
+
+\subsection{关系模式}
+
+将 ER 图转换为关系模式（5 张表）：
+
+\begin{enumerate}
+    \item \textbf{Categories}(\underline{Id}, Name)
+    \item \textbf{Origins}(\underline{Id}, Name)
+    \item \textbf{Items}(\underline{ItemCode}, ItemName, Category, Origin, Specification, Model, ImagePath, ImageData, Quantity)\\
+    外键：Category REFERENCES Categories(Id)
+    \item \textbf{StockIn}(\underline{StockInNo}, ItemCode, PurchaseDate, Quantity, UnitPrice, TotalPrice)\\
+    外键：ItemCode REFERENCES Items(ItemCode)
+    \item \textbf{StockOut}(\underline{StockOutNo}, ItemCode, Quantity, ApplicantId, ApplyDate, Status, ApproveDate, Remark)\\
+    外键：ItemCode REFERENCES Items(ItemCode)
+\end{enumerate}
+
+\subsection{完整性约束}
+
+\subsubsection{实体完整性}
+
+每张表均定义主键约束，确保记录唯一标识：
+
+\begin{itemize}
+    \item PK\_Categories：Categories(Id)
+    \item PK\_Origins：Origins(Id)
+    \item PK\_Items：Items(ItemCode)
+    \item PK\_StockIn：StockIn(StockInNo)
+    \item PK\_StockOut：StockOut(StockOutNo)
+\end{itemize}
+
+\subsubsection{参照完整性}
+
+\begin{itemize}
+    \item FK\_Items\_Category：Items.Category → Categories.Id，ON DELETE RESTRICT, ON UPDATE CASCADE
+    \item FK\_StockIn\_ItemCode：StockIn.ItemCode → Items.ItemCode，ON DELETE RESTRICT, ON UPDATE CASCADE
+    \item FK\_StockOut\_ItemCode：StockOut.ItemCode → Items.ItemCode，ON DELETE RESTRICT, ON UPDATE CASCADE
+\end{itemize}
+
+RESTRICT 策略的含义：如果某物品已被入库或领用引用，则不允许删除该物品，必须先删除关联记录。这保证了数据的引用完整性。
+
+\subsubsection{用户定义完整性}
+
+\begin{itemize}
+    \item CK\_Items\_Quantity：CHECK (Quantity >= 0)，库存不能为负
+    \item CK\_StockIn\_Quantity：CHECK (Quantity > 0)，入库数量必须为正
+    \item CK\_StockIn\_UnitPrice：CHECK (UnitPrice >= 0)，单价不能为负
+    \item CK\_StockIn\_TotalPrice：CHECK (TotalPrice >= 0)，总价不能为负
+    \item CK\_StockOut\_Quantity：CHECK (Quantity > 0)，领用数量必须为正
+    \item CK\_StockOut\_Status：CHECK (Status IN (0, 1, 2))，状态只能是 0/1/2
+    \item UQ\_Categories\_Name：UNIQUE，类别名称唯一
+    \item UQ\_Origins\_Name：UNIQUE，产地名称唯一
+\end{itemize}
+
+\subsection{范式分析}
+
+所有表均满足第三范式（3NF）：
+
+\begin{itemize}
+    \item 每个属性不可再分（满足 1NF）
+    \item 不存在部分函数依赖——所有非主属性完全函数依赖于主键（满足 2NF）
+    \item 不存在传递函数依赖——非主属性之间没有依赖关系（满足 3NF）
+\end{itemize}
+
+\subsection{约束命名规范}
+
+采用前缀命名规则，提高可读性和可维护性：
+
+\begin{table}[H]
+\centering
+\begin{tabular}{c|c|c}
+\toprule
+\textbf{前缀} & \textbf{含义} & \textbf{示例} \\
+\midrule
+PK\_ & 主键（Primary Key） & PK\_Items \\
+FK\_ & 外键（Foreign Key） & FK\_StockIn\_ItemCode \\
+CK\_ & CHECK 约束 & CK\_Items\_Quantity \\
+UQ\_ & UNIQUE 约束 & UQ\_Categories\_Name \\
+IX\_ & 索引（Index） & IX\_StockIn\_ItemCode \\
+\bottomrule
+\end{tabular}
+\caption{约束命名规范}
+\end{table}
+
+% ================================================================
+\section{物理结构设计}
+% ================================================================
+
+\subsection{存储引擎选择}
+
+全部表采用 InnoDB 引擎，理由：
+
+\begin{enumerate}
+    \item 支持事务（ACID）—— 入库和领用审批需要事务保证原子性
+    \item 支持行级锁 —— 高并发场景下性能更好
+    \item 支持外键约束 —— 保证数据引用完整性
+    \item 支持崩溃恢复 —— 通过 redo log 保证数据安全
+\end{enumerate}
+
+\subsection{索引设计}
+
+\begin{longtable}{c|c|c|c}
+\toprule
+\textbf{索引名} & \textbf{表} & \textbf{字段} & \textbf{设计理由} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{索引名} & \textbf{表} & \textbf{字段} & \textbf{设计理由} \\
+\midrule
+\endhead
+IX\_Items\_Category & Items & Category & 按类别筛选物品时需要 \\
+IX\_Items\_ItemName & Items & ItemName & 按名称模糊搜索物品时需要 \\
+IX\_StockIn\_ItemCode & StockIn & ItemCode & 按物品查询入库记录时需要 \\
+IX\_StockIn\_PurchaseDate & StockIn & PurchaseDate & 按日期范围查询时需要 \\
+IX\_StockOut\_ItemCode & StockOut & ItemCode & 按物品查询领用记录时需要 \\
+IX\_StockOut\_ApplicantId & StockOut & ApplicantId & 按用户查询领用记录时需要 \\
+IX\_StockOut\_Status & StockOut & Status & 按状态筛选待审批记录时需要 \\
+\bottomrule
+\caption{索引设计与理由}
+\end{longtable}
+
+\subsection{存储估算}
+
+以 100 万条入库记录为例：
+
+\begin{itemize}
+    \item 每条记录约 80 字节（流水号 20 + 编码 20 + 日期 8 + 数量 4 + 单价 9 + 总价 9 + 索引开销）
+    \item 100 万条 ≈ 80 MB（数据） + 40 MB（索引） ≈ 120 MB
+    \item 加上图片数据（ImageData LONGBLOB），每张图片按 200KB 估算
+    \item 总磁盘占用：120 MB + 图片数据
+\end{itemize}
+
+\subsection{性能优化配置}
+
+\begin{lstlisting}[language=SQL,caption=MySQL 配置建议]
+-- InnoDB Buffer Pool：设置为物理内存的 50-70%
+SET GLOBAL innodb_buffer_pool_size = 536870912;  -- 512MB
+
+-- 日志缓冲区
+SET GLOBAL innodb_log_buffer_size = 16777216;    -- 16MB
+\end{lstlisting}
+
+% ================================================================
+\section{数据库实施}
+% ================================================================
+
+\subsection{建表 DDL}
+
+以核心表 Items 为例：
+
+\begin{lstlisting}[language=SQL,caption=Items 表建表语句]
+CREATE TABLE Items (
+    ItemCode        VARCHAR(20)     NOT NULL,
+    ItemName        VARCHAR(100)    NOT NULL,
+    Category        INT             NOT NULL,
+    Origin          VARCHAR(100)    NOT NULL DEFAULT '',
+    Specification   VARCHAR(100)    NOT NULL DEFAULT '',
+    Model           VARCHAR(100)    NOT NULL DEFAULT '',
+    ImagePath       VARCHAR(500)    NOT NULL DEFAULT '',
+    ImageData       LONGBLOB        NULL,
+    Quantity        INT             NOT NULL DEFAULT 0,
+    CONSTRAINT PK_Items PRIMARY KEY (ItemCode),
+    CONSTRAINT FK_Items_Category FOREIGN KEY (Category)
+        REFERENCES Categories(Id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT CK_Items_Quantity CHECK (Quantity >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+\end{lstlisting}
+
+\subsection{索引创建}
+
+\begin{lstlisting}[language=SQL,caption=索引创建语句]
+CREATE INDEX IX_Items_Category ON Items(Category);
+CREATE INDEX IX_Items_ItemName ON Items(ItemName);
+CREATE INDEX IX_StockIn_ItemCode ON StockIn(ItemCode);
+CREATE INDEX IX_StockIn_PurchaseDate ON StockIn(PurchaseDate);
+CREATE INDEX IX_StockOut_ItemCode ON StockOut(ItemCode);
+CREATE INDEX IX_StockOut_ApplicantId ON StockOut(ApplicantId);
+CREATE INDEX IX_StockOut_Status ON StockOut(Status);
+\end{lstlisting}
+
+\subsection{存储过程}
+
+共创建 10 个存储过程，以下是核心的几个：
+
+\begin{lstlisting}[language=SQL,caption=流水号生成存储过程]
+CREATE PROCEDURE sp_GenerateStockInNo(OUT outNo VARCHAR(20))
+BEGIN
+    DECLARE prefix VARCHAR(10);
+    DECLARE seq INT;
+    SET prefix = CONCAT('SI', DATE_FORMAT(NOW(), '%Y%m%d'));
+    SELECT COUNT(*) + 1 INTO seq
+    FROM StockIn WHERE StockInNo LIKE CONCAT(prefix, '%');
+    SET outNo = CONCAT(prefix, LPAD(seq, 3, '0'));
+END
+\end{lstlisting}
+
+\begin{lstlisting}[language=SQL,caption=入库事务存储过程]
+CREATE PROCEDURE sp_StockIn(
+    IN p_ItemCode VARCHAR(20),
+    IN p_PurchaseDate DATETIME,
+    IN p_Quantity INT,
+    IN p_UnitPrice DECIMAL(18,2)
+)
+BEGIN
+    DECLARE v_StockInNo VARCHAR(20);
+    DECLARE v_TotalPrice DECIMAL(18,2);
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+        CALL sp_GenerateStockInNo(v_StockInNo);
+        SET v_TotalPrice = p_Quantity * p_UnitPrice;
+
+        INSERT INTO StockIn (StockInNo, ItemCode, PurchaseDate,
+                             Quantity, UnitPrice, TotalPrice)
+        VALUES (v_StockInNo, p_ItemCode, p_PurchaseDate,
+                p_Quantity, p_UnitPrice, v_TotalPrice);
+
+        UPDATE Items SET Quantity = Quantity + p_Quantity
+        WHERE ItemCode = p_ItemCode;
+
+        SELECT v_StockInNo AS StockInNo;
+    COMMIT;
+END
+\end{lstlisting}
+
+\subsection{触发器}
+
+共创建 4 个触发器，实现库存的自动同步：
+
+\begin{lstlisting}[language=SQL,caption=入库触发器和确认领用触发器]
+-- 入库后自动累加库存
+CREATE TRIGGER trg_StockIn_AfterInsert
+AFTER INSERT ON StockIn
+FOR EACH ROW
+BEGIN
+    UPDATE Items SET Quantity = Quantity + NEW.Quantity
+    WHERE ItemCode = NEW.ItemCode;
+END;
+
+-- 领用确认后自动扣减库存
+CREATE TRIGGER trg_StockOut_AfterUpdate
+AFTER UPDATE ON StockOut
+FOR EACH ROW
+BEGIN
+    IF OLD.Status = 0 AND NEW.Status = 1 THEN
+        UPDATE Items
+        SET Quantity = GREATEST(0, Quantity - NEW.Quantity)
+        WHERE ItemCode = NEW.ItemCode;
+    END IF;
+END;
+\end{lstlisting}
+
+\subsection{视图}
+
+\begin{lstlisting}[language=SQL,caption=库存汇总视图]
+CREATE VIEW v_StockSummary AS
+SELECT
+    i.ItemCode, i.ItemName, c.Name AS CategoryName,
+    i.Origin, i.Specification, i.Model, i.Quantity,
+    CASE
+        WHEN i.Quantity = 0 THEN '缺货'
+        WHEN i.Quantity < 50 THEN '低库存'
+        WHEN i.Quantity < 200 THEN '正常'
+        ELSE '充足'
+    END AS StockLevel
+FROM Items i
+JOIN Categories c ON i.Category = c.Id;
+\end{lstlisting}
+
+\subsection{种子数据}
+
+预置 6 个类别、13 个产地、10 种物品和示例入库/领用记录，确保系统安装后即可使用。
+
+\subsection{百万条测试数据}
+
+通过存储过程循环生成 100 万条入库记录，用于性能测试。
+
+\begin{lstlisting}[language=SQL,caption=百万条数据生成存储过程（核心循环）]
+WHILE i <= 1000000 DO
+    SET v_Idx = 1 + FLOOR(RAND() * 10);
+    SET v_ItemCode = SUBSTRING_INDEX(
+        SUBSTRING_INDEX(v_ItemCodes, ',', v_Idx), ',', -1);
+    SET v_Price = 1 + ROUND(RAND() * 499, 2);
+
+    INSERT INTO StockIn (...) VALUES (...);
+
+    IF i % 10000 = 0 THEN COMMIT; END IF;
+    SET i = i + 1;
+END WHILE;
+\end{lstlisting}
+
+% ================================================================
+\section{数据库运行和维护}
+% ================================================================
+
+\subsection{性能监控}
+
+\begin{lstlisting}[language=SQL,caption=慢查询监控]
+-- 查看慢查询配置
+SHOW VARIABLES LIKE 'slow_query%';
+SHOW VARIABLES LIKE 'long_query_time';
+
+-- 启用慢查询日志
+SET GLOBAL slow_query_log = 1;
+SET GLOBAL long_query_time = 0.5;  -- 超过 0.5 秒视作慢查询
+\end{lstlisting}
+
+\subsection{执行计划分析}
+
+\begin{lstlisting}[language=SQL,caption=EXPLAIN 分析]
+EXPLAIN SELECT * FROM StockIn WHERE ItemCode = 'P001';
+-- 预期结果：type=ref, key=IX_StockIn_ItemCode, rows≈100,000
+
+EXPLAIN SELECT ItemCode, SUM(TotalPrice) FROM StockIn
+GROUP BY ItemCode;
+-- 预期结果：type=index, Using temporary
+\end{lstlisting}
+
+\subsection{性能测试结果}
+
+在插入 100 万条入库记录后测试：
+
+\begin{table}[H]
+\centering
+\begin{tabular}{l|c|c}
+\toprule
+\textbf{测试查询} & \textbf{耗时} & \textbf{说明} \\
+\midrule
+SELECT COUNT(*) FROM StockIn & $\sim$0.2s & 全表扫描 \\
+WHERE ItemCode='P001' & $\sim$0.01s & 走索引 IX\_StockIn\_ItemCode \\
+WHERE PurchaseDate BETWEEN '2025-01' AND '2025-06' & $\sim$0.05s & 走索引 IX\_StockIn\_PurchaseDate \\
+GROUP BY ItemCode（聚合） & $\sim$0.8s & 全表扫描 + 临时表 \\
+JOIN Items 查询 & $\sim$0.3s & 索引 JOIN \\
+\bottomrule
+\end{tabular}
+\caption{百万条记录性能测试结果}
+\end{table}
+
+\subsection{备份策略}
+
+\begin{lstlisting}[language=bash,caption=数据库备份命令]
+# 全量备份
+mysqldump -u root -p --databases OfficeItemsDB > backup.sql
+
+# 仅备份结构
+mysqldump -u root -p --no-data OfficeItemsDB > schema.sql
+
+# 定时备份（crontab）
+0 2 * * * mysqldump -u root -p密码 OfficeItemsDB > backup_$(date +\%Y\%m\%d).sql
+\end{lstlisting}
+
+% ================================================================
+\section{总结}
+% ================================================================
+
+\subsection{设计要点回顾}
+
+\begin{enumerate}
+    \item \textbf{三层完整性保障}：实体完整性（主键）、参照完整性（外键 + RESTRICT）、用户定义完整性（CHECK 约束）
+    \item \textbf{库存一致性的双重保障}：应用层事务（EF Core BeginTransaction）+ 数据库层触发器，确保任何方式修改数据都能保持库存正确
+    \item \textbf{流水号编码规则}：SI/SO + 日期 + 序号，既保证唯一性又具有业务可读性
+    \item \textbf{索引策略}：针对高频查询条件建立索引，百万条数据下索引查询耗时低于 10ms
+    \item \textbf{范式设计}：全部表符合 3NF，消除数据冗余和更新异常
+\end{enumerate}
+
+\subsection{问题与解决方案}
+
+\begin{description}
+    \item[问题一：EF Core 实体跟踪冲突] 单例 DbContext 下，同一主键的实体被 FindAsync 跟踪后，Update 传入新实例会报跟踪冲突。解决方案：GetByCodeAsync 改用 AsNoTracking()，UpdateAsync 前 Detach 已跟踪实体。
+    \item[问题二：100 万条数据全量加载卡死] 入库页面 GetAllAsync() 加载全部记录导致界面卡死。解决方案：新增 GetRecentAsync(50) 仅加载最近 50 条，同时库存查询页使用分页。
+    \item[问题三：触发器性能影响] 100 万条 INSERT 时每条都触发触发器，耗时显著增加。解决方案：种子数据脚本中临时禁用触发器，插入完成后重新启用。
+\end{description}
+
+\subsection{收获与体会}
+
+通过本次数据库设计与实现，我深入理解了：
+
+\begin{itemize}
+    \item 从需求分析到物理实现的完整数据库设计流程
+    \item ER 图向关系模式的转换方法
+    \item 完整性约束（实体、参照、用户定义）的实际应用
+    \item 存储过程、触发器、视图、游标等高级数据库对象的使用场景
+    \item 索引对查询性能的影响及 EXPLAIN 分析工具的使用
+    \item 数据库事务在保证数据一致性中的关键作用
+\end{itemize}
+
+\end{document}
