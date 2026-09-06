@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - 办公物品管理系统</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="nav-brand">办公物品管理系统（普通用户）</div>
+            <div class="nav-menu">
+                @if (Context.Session.GetString("UserId") != null)
+                {
+                    <span class="nav-user">欢迎, @Context.Session.GetString("UserName")</span>
+                    <a href="/StockQuery" class="nav-link">库存查询</a>
+                    <a href="/Apply" class="nav-link">领用申请</a>
+                    <a href="/Account/Logout" class="nav-link nav-logout">退出</a>
+                }
+            </div>
+        </nav>
+    </header>
+
+    <main class="container">
+        @RenderBody()
+    </main>
+
+    <footer>
+        <p>&copy; 2025 办公物品管理系统</p>
+    </footer>
+
+    @RenderSection("Scripts", required: false)
+</body>
+</html>
