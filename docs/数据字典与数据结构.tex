@@ -1,0 +1,354 @@
+\documentclass[12pt,a4paper]{ctexart}
+
+% ===== 页面设置 =====
+\usepackage[top=2.5cm,bottom=2.5cm,left=2cm,right=2cm]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{hyperref}
+
+\hypersetup{colorlinks=true,linkcolor=blue}
+
+\title{\textbf{办公物品管理系统\\数据字典与数据结构}}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+\section{表汇总}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{c|c|c|c|c}
+\toprule
+\textbf{序号} & \textbf{表名} & \textbf{中文名} & \textbf{引擎} & \textbf{记录数（示例）} \\
+\midrule
+1 & Categories & 物品类别字典 & InnoDB & 6 \\
+2 & Origins & 产地字典 & InnoDB & 13 \\
+3 & Items & 物品信息表 & InnoDB & 10 \\
+4 & StockIn & 入库记录表 & InnoDB & $\sim$1,000,010 \\
+5 & StockOut & 领用出库记录表 & InnoDB & 3 \\
+\bottomrule
+\end{tabular}
+\caption{数据库表汇总}
+\end{table}
+
+\section{表结构详细定义}
+
+\subsection{Categories（物品类别字典）}
+
+\begin{longtable}{c|c|c|c|c}
+\toprule
+\textbf{字段名} & \textbf{数据类型} & \textbf{允许空} & \textbf{主键/外键} & \textbf{说明} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{字段名} & \textbf{数据类型} & \textbf{允许空} & \textbf{主键/外键} & \textbf{说明} \\
+\midrule
+\endhead
+Id   & INT & 否 & PK\_Categories & 类别 ID，自增 \\
+Name & VARCHAR(50) & 否 & UQ\_Categories\_Name & 类别名称，唯一 \\
+\bottomrule
+\caption{Categories 表结构}
+\end{longtable}
+
+\vspace{4pt}
+\textbf{预置数据：}
+
+\begin{tabular}{c|c}
+\toprule
+\textbf{Id} & \textbf{Name} \\
+\midrule
+1 & 纸张 \\
+2 & 文具 \\
+3 & 刀具 \\
+4 & 单据 \\
+5 & 礼品 \\
+6 & 其它 \\
+\bottomrule
+\end{tabular}
+
+\subsection{Origins（产地字典）}
+
+\begin{longtable}{c|c|c|c|c}
+\toprule
+\textbf{字段名} & \textbf{数据类型} & \textbf{允许空} & \textbf{主键/外键} & \textbf{说明} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{字段名} & \textbf{数据类型} & \textbf{允许空} & \textbf{主键/外键} & \textbf{说明} \\
+\midrule
+\endhead
+Id   & INT & 否 & PK\_Origins & 产地 ID，自增 \\
+Name & VARCHAR(100) & 否 & UQ\_Origins\_Name & 产地名称，唯一 \\
+\bottomrule
+\caption{Origins 表结构}
+\end{longtable}
+
+\vspace{4pt}
+\textbf{预置数据：} 北京、上海、广州、深圳、杭州、成都、武汉、南京、苏州、德国、日本、美国、中国台湾（共 13 个）
+
+\subsection{Items（物品信息表）}
+
+\begin{longtable}{c|c|c|c|c}
+\toprule
+\textbf{字段名} & \textbf{数据类型} & \textbf{允许空} & \textbf{主键/外键} & \textbf{说明} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{字段名} & \textbf{数据类型} & \textbf{允许空} & \textbf{主键/外键} & \textbf{说明} \\
+\midrule
+\endhead
+ItemCode      & VARCHAR(20)  & 否 & PK\_Items            & 物品编码，唯一标识 \\
+ItemName      & VARCHAR(100) & 否 & —                    & 物品名称 \\
+Category      & INT          & 否 & FK → Categories(Id)  & 物品类别 \\
+Origin        & VARCHAR(100) & 否（默认''）& —                & 产地 \\
+Specification & VARCHAR(100) & 否（默认''）& —               & 规格描述 \\
+Model         & VARCHAR(100) & 否（默认''）& —              & 型号 \\
+ImagePath     & VARCHAR(500) & 否（默认''）& —             & 图片路径（兼容历史） \\
+ImageData     & LONGBLOB     & 是 & —                    & 图片二进制数据 \\
+Quantity      & INT          & 否（默认 0）& CK\_Items\_Quantity & 库存数量，CHECK($\geq$0) \\
+\bottomrule
+\caption{Items 表结构}
+\end{longtable}
+
+\vspace{4pt}
+\textbf{索引：}
+
+\begin{tabular}{c|c|c}
+\toprule
+\textbf{索引名} & \textbf{字段} & \textbf{说明} \\
+\midrule
+IX\_Items\_Category & Category  & 加速按类别筛选 \\
+IX\_Items\_ItemName & ItemName  & 加速按名称搜索 \\
+\bottomrule
+\end{tabular}
+
+\subsection{StockIn（入库记录表）}
+
+\begin{longtable}{c|c|c|c|c}
+\toprule
+\textbf{字段名} & \textbf{数据类型} & \textbf{允许空} & \textbf{主键/外键} & \textbf{说明} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{字段名} & \textbf{数据类型} & \textbf{允许空} & \textbf{主键/外键} & \textbf{说明} \\
+\midrule
+\endhead
+StockInNo    & VARCHAR(20)    & 否 & PK\_StockIn              & 流水号 SI+日期+序号 \\
+ItemCode     & VARCHAR(20)    & 否 & FK → Items(ItemCode)     & 物品编码 \\
+PurchaseDate & DATETIME       & 否 & —                        & 购买日期 \\
+Quantity     & INT            & 否 & CK\_StockIn\_Quantity     & 入库数量，CHECK($>$0) \\
+UnitPrice    & DECIMAL(18,2)  & 否 & CK\_StockIn\_UnitPrice    & 单价，CHECK($\geq$0) \\
+TotalPrice   & DECIMAL(18,2)  & 否 & CK\_StockIn\_TotalPrice   & 总价=数量×单价 \\
+\bottomrule
+\caption{StockIn 表结构}
+\end{longtable}
+
+\vspace{4pt}
+\textbf{索引：}
+
+\begin{tabular}{c|c|c}
+\toprule
+\textbf{索引名} & \textbf{字段} & \textbf{说明} \\
+\midrule
+IX\_StockIn\_ItemCode     & ItemCode      & 加速按物品查入库 \\
+IX\_StockIn\_PurchaseDate & PurchaseDate  & 加速按日期范围查询 \\
+\bottomrule
+\end{tabular}
+
+\subsection{StockOut（领用出库记录表）}
+
+\begin{longtable}{c|c|c|c|c}
+\toprule
+\textbf{字段名} & \textbf{数据类型} & \textbf{允许空} & \textbf{主键/外键} & \textbf{说明} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{字段名} & \textbf{数据类型} & \textbf{允许空} & \textbf{主键/外键} & \textbf{说明} \\
+\midrule
+\endhead
+StockOutNo  & VARCHAR(20)   & 否 & PK\_StockOut               & 流水号 SO+日期+序号 \\
+ItemCode    & VARCHAR(20)   & 否 & FK → Items(ItemCode)       & 物品编码 \\
+Quantity    & INT           & 否 & CK\_StockOut\_Quantity     & 领用数量，CHECK($>$0) \\
+ApplicantId & VARCHAR(50)   & 否 & —                          & 领用人 ID（JSON 用户） \\
+ApplyDate   & DATETIME      & 否 & —                          & 申请日期 \\
+Status      & INT           & 否（默认 0）& CK\_StockOut\_Status   & 0=申请 1=确认 2=驳回 \\
+ApproveDate & DATETIME      & 是 & —                          & 审批日期 \\
+Remark      & VARCHAR(500)  & 是 & —                          & 审批备注 \\
+\bottomrule
+\caption{StockOut 表结构}
+\end{longtable}
+
+\vspace{4pt}
+\textbf{索引：}
+
+\begin{tabular}{c|c|c}
+\toprule
+\textbf{索引名} & \textbf{字段} & \textbf{说明} \\
+\midrule
+IX\_StockOut\_ItemCode    & ItemCode    & 加速按物品查询 \\
+IX\_StockOut\_ApplicantId & ApplicantId & 加速按用户查询 \\
+IX\_StockOut\_Status      & Status      & 加速按状态筛选 \\
+\bottomrule
+\end{tabular}
+
+\section{状态码定义}
+
+\subsection{StockOut.Status（领用状态）}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{c|c|c|c}
+\toprule
+\textbf{值} & \textbf{含义} & \textbf{触发者} & \textbf{库存影响} \\
+\midrule
+0 & 申请 & 普通用户 & 不变 \\
+1 & 确认 & 管理员   & \cellcolor{red!20}\textbf{扣减} \\
+2 & 驳回 & 管理员   & 不变 \\
+\bottomrule
+\end{tabular}
+\caption{领用状态码定义}
+\end{table}
+
+\subsection{Items.Category（物品类别）}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{c|c}
+\toprule
+\textbf{值} & \textbf{含义} \\
+\midrule
+1 & 纸张 \\
+2 & 文具 \\
+3 & 刀具 \\
+4 & 单据 \\
+5 & 礼品 \\
+6 & 其它 \\
+\bottomrule
+\end{tabular}
+\caption{物品类别码}
+\end{table}
+
+\section{流水号编码规则}
+
+\begin{longtable}{c|c|c|c}
+\toprule
+\textbf{表} & \textbf{格式} & \textbf{示例} & \textbf{说明} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{表} & \textbf{格式} & \textbf{示例} & \textbf{说明} \\
+\midrule
+\endhead
+StockIn  & SI + yyyyMMdd + 3位序号 & SI20250115001 & 2025年1月15日第1笔入库 \\
+StockOut & SO + yyyyMMdd + 3位序号 & SO20250115002 & 2025年1月15日第2笔领用 \\
+\bottomrule
+\caption{流水号编码规则}
+\end{longtable}
+
+\section{视图}
+
+\begin{longtable}{c|c|c}
+\toprule
+\textbf{视图名} & \textbf{数据源} & \textbf{用途} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{视图名} & \textbf{数据源} & \textbf{用途} \\
+\midrule
+\endhead
+v\_StockSummary     & Items JOIN Categories                    & 库存总览（含库存等级） \\
+v\_StockInMonthly   & StockIn GROUP BY                          & 入库按月统计 \\
+v\_StockOutSummary  & StockOut JOIN Items JOIN Categories       & 领用按物品统计 \\
+v\_ItemFullInfo     & Items + 子查询（入库总额、领用次数）       & 物品完整信息 \\
+\bottomrule
+\caption{视图清单}
+\end{longtable}
+
+\section{触发器}
+
+\begin{longtable}{c|c|c|c}
+\toprule
+\textbf{触发器名} & \textbf{表} & \textbf{时机} & \textbf{操作} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{触发器名} & \textbf{表} & \textbf{时机} & \textbf{操作} \\
+\midrule
+\endhead
+trg\_StockIn\_AfterInsert  & StockIn  & AFTER INSERT  & Items.Quantity += NEW.Quantity \\
+trg\_StockIn\_AfterDelete  & StockIn  & AFTER DELETE  & Items.Quantity -= OLD.Quantity（至少为 0） \\
+trg\_StockOut\_AfterUpdate & StockOut & AFTER UPDATE  & 状态 0→1 时 Items.Quantity -= NEW.Quantity \\
+trg\_StockOut\_AfterDelete & StockOut & AFTER DELETE  & 已确认记录删除时恢复库存 \\
+\bottomrule
+\caption{触发器清单}
+\end{longtable}
+
+\section{存储过程}
+
+\begin{longtable}{c|c|c}
+\toprule
+\textbf{存储过程} & \textbf{参数} & \textbf{功能} \\
+\midrule
+\endfirsthead
+\hline
+\textbf{存储过程} & \textbf{参数} & \textbf{功能} \\
+\hline
+\endhead
+sp\_GenerateStockInNo    & OUT outNo & 生成入库流水号 \\
+sp\_GenerateStockOutNo   & OUT outNo & 生成领用流水号 \\
+sp\_StockIn              & IN 4 个参数 & 事务：写入库 + 更新库存 \\
+sp\_ApproveStockOut      & IN 3 个参数 & 事务：确认 + 扣库存 \\
+sp\_RejectStockOut       & IN 2 个参数 & 驳回领用 \\
+sp\_StockStatistics      & —          & 按类别统计库存 \\
+sp\_StockInDetail        & IN 3 个参数 & 入库明细分页 \\
+sp\_StockOutDetail       & IN 3 个参数 & 领用明细分页 \\
+sp\_FixNegativeStock     & —          & 游标批量修正负库存 \\
+sp\_TopCategoryByStockIn & IN TopN    & 入库金额排行 \\
+\bottomrule
+\caption{存储过程清单}
+\end{longtable}
+
+\section{用户数据结构（JSON）}
+
+存储文件：\texttt{Users.json}
+
+\begin{verbatim}
+[
+  {
+    "UserId": "user01",
+    "Password": "1234",
+    "Name": "张三",
+    "Gender": "男",
+    "BirthDate": "1990-05-15T00:00:00",
+    "Phone": "13800138001"
+  }
+]
+\end{verbatim}
+
+\begin{longtable}{c|c|c}
+\toprule
+\textbf{字段} & \textbf{类型} & \textbf{说明} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{字段} & \textbf{类型} & \textbf{说明} \\
+\midrule
+\endhead
+UserId    & string   & 用户 ID（登录账号） \\
+Password  & string   & 登录密码 \\
+Name      & string   & 真实姓名 \\
+Gender    & string   & 性别："男" / "女" \\
+BirthDate & DateTime & 出生日期 \\
+Phone     & string   & 联系电话 \\
+\bottomrule
+\caption{JSON 用户数据结构}
+\end{longtable}
+
+\end{document}
