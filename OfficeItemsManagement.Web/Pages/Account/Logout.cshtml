@@ -1,0 +1,8 @@
+@page
+@functions {
+    public IActionResult OnGet()
+    {
+        HttpContext.Session.Clear();
+        return RedirectToPage("/Account/Login");
+    }
+}
