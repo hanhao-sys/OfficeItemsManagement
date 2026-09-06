@@ -1,0 +1,98 @@
+\documentclass[UTF8,a4paper,11pt]{article}
+\usepackage{ctex}
+\usepackage{tikz}
+\usetikzlibrary{er,positioning,calc}
+
+\begin{document}
+	
+	\section{办公物品管理系统 总ER图}
+	\begin{center}
+		\begin{tikzpicture}[
+			entity/.style = {
+				rectangle, draw, thick, 
+				minimum width=3cm, minimum height=1.8cm,
+				align=center, fill=gray!5
+			},
+			attribute/.style = {
+				ellipse, draw, thick, 
+				minimum width=2cm, minimum height=1cm,
+				align=center
+			},
+			pk attribute/.style = {
+				ellipse, draw, thick, 
+				minimum width=2cm, minimum height=1cm,
+				align=center
+			},
+			fk attribute/.style = {
+				ellipse, draw, thick, dashed,
+				minimum width=2cm, minimum height=1cm,
+				align=center
+			},
+			relationship/.style = {
+				diamond, draw, thick, 
+				minimum width=2.5cm, minimum height=1.2cm,
+				align=center, fill=blue!5
+			},
+			line/.style = {thick}
+			]
+			
+			% 实体布局
+			\node[entity] (Categories) {物品类别};
+			\node[entity, right=4cm of Categories] (Items) {物品信息};
+			\node[entity, below=3cm of Categories] (Origins) {产地};
+			\node[entity, below=3cm of Items] (StockIn) {物品入库};
+			\node[entity, right=4cm of StockIn] (StockOut) {物品出库};
+			
+			% 关系
+			\node[relationship, above=1cm of $(Categories)!0.5!(Items)$] (R1) {属于};
+			\draw[line] (Categories) -- node[above] {1} (R1) -- node[above] {N} (Items);
+			
+			\node[relationship, left=1.5cm of Items, yshift=-1.5cm] (R2) {参考};
+			\draw[line] (Origins) -- node[left] {1} (R2) -- node[right] {N} (Items);
+			\node[red, font=\small] at ($(R2)+(0,-0.8)$) {松散引用};
+			
+			\node[relationship, below=1cm of $(Items)!0.5!(StockIn)$] (R3) {入库};
+			\draw[line] (Items) -- node[left] {1} (R3) -- node[left] {N} (StockIn);
+			
+			\node[relationship, below=1cm of $(Items)!0.5!(StockOut)$] (R4) {领用};
+			\draw[line] (Items) -- node[right] {1} (R4) -- node[right] {N} (StockOut);
+			
+			% 属性
+			% 物品类别
+			\node[pk attribute, left=1.8cm of Categories] (C_Id) {\underline{Id}};
+			\draw[line] (Categories) -- (C_Id);
+			\node[attribute, left=1.8cm of Categories, yshift=-1cm] (C_Name) {类别名};
+			\draw[line] (Categories) -- (C_Name);
+			
+			% 产地
+			\node[pk attribute, left=1.8cm of Origins] (O_Id) {\underline{Id}};
+			\draw[line] (Origins) -- (O_Id);
+			\node[attribute, left=1.8cm of Origins, yshift=-1cm] (O_Name) {产地名};
+			\draw[line] (Origins) -- (O_Name);
+			
+			% 物品信息
+			\node[pk attribute, right=1.8cm of Items] (I_Code) {\underline{物品编码}};
+			\draw[line] (Items) -- (I_Code);
+			\node[attribute, right=1.8cm of Items, yshift=-1cm] (I_Name) {物品名称};
+			\draw[line] (Items) -- (I_Name);
+			\node[fk attribute, right=1.8cm of Items, yshift=-2cm] (I_Cate) {物品类别};
+			\draw[line] (Items) -- (I_Cate);
+			\node[attribute, right=1.8cm of Items, yshift=-3cm] (I_Qty) {库存数量};
+			\draw[line] (Items) -- (I_Qty);
+			
+			% 入库记录
+			\node[pk attribute, left=1.8cm of StockIn] (SI_No) {\underline{入库流水号}};
+			\draw[line] (StockIn) -- (SI_No);
+			\node[fk attribute, left=1.8cm of StockIn, yshift=-1cm] (SI_Code) {物品编码};
+			\draw[line] (StockIn) -- (SI_Code);
+			
+			% 出库记录
+			\node[pk attribute, right=1.8cm of StockOut] (SO_No) {\underline{领用流水号}};
+			\draw[line] (StockOut) -- (SO_No);
+			\node[fk attribute, right=1.8cm of StockOut, yshift=-1cm] (SO_Code) {物品编码};
+			\draw[line] (StockOut) -- (SO_Code);
+			
+		\end{tikzpicture}
+	\end{center}
+	
+\end{document}
