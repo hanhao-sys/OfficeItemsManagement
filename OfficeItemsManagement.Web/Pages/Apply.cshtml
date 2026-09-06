@@ -1,0 +1,200 @@
+@page
+@model OfficeItemsManagement.Web.Pages.ApplyModel
+@{
+    ViewData["Title"] = "领用申请";
+}
+
+<div class="card">
+    <div class="card-header">物品领用申请</div>
+    <div class="card-body">
+        @if (!string.IsNullOrEmpty(Model.Message))
+        {
+            <div class="alert @(Model.IsSuccess ? "alert-success" : "alert-danger")">
+                @Model.Message
+            </div>
+        }
+
+        <form method="post">
+            <div class="inline-form">
+                <div class="form-group">
+                    <label>选择物品</label>
+                    <select name="ItemCode" class="form-control" style="width:220px" asp-for="ItemCode" required
+                            onchange="updateItemInfo()">
+                        <option value="">-- 请选择物品 --</option>
+                        @if (Model.Items != null)
+                        {
+                            @foreach (var item in Model.Items)
+                            {
+                                <option value="@item.ItemCode"
+                                        data-name="@item.ItemName"
+                                        data-qty="@item.Quantity">
+                                    @item.ItemCode - @item.ItemName (库存: @item.Quantity)
+                                </option>
+                            }
+                        }
+                    </select>
+                    <button type="button" class="btn btn-secondary" style="margin-left:8px"
+                            onclick="openItemPopup()">
+                        📋 弹出选择
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label>物品名称</label>
+                    <input type="text" id="itemNameDisplay" class="form-control" style="width:180px" readonly />
+                </div>
+
+                <div class="form-group">
+                    <label>当前库存</label>
+                    <input type="text" id="itemQtyDisplay" class="form-control" style="width:100px" readonly />
+                </div>
+            </div>
+
+            <div class="inline-form">
+                <div class="form-group">
+                    <label>领用数量</label>
+                    <input type="number" name="Quantity" class="form-control" style="width:120px"
+                           min="1" required />
+                </div>
+
+                <div class="form-group">
+                    <label>领用人</label>
+                    <input type="text" class="form-control" style="width:150px"
+                           value="@Model.ApplicantName" readonly />
+                </div>
+
+                <div class="form-group">
+                    <label>领用日期</label>
+                    <input type="text" class="form-control" style="width:150px"
+                           value="@DateTime.Now.ToString("yyyy-MM-dd")" readonly />
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width:120px; margin-top:10px;">
+                提交申请
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- 我的领用记录 -->
+<div class="card">
+    <div class="card-header">我的领用记录</div>
+    <div class="card-body">
+        <table>
+            <thead>
+                <tr>
+                    <th>流水号</th>
+                    <th>物品编码</th>
+                    <th>物品名称</th>
+                    <th>数量</th>
+                    <th>领用日期</th>
+                    <th>状态</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.MyRecords != null && Model.MyRecords.Any())
+                {
+                    @foreach (var r in Model.MyRecords)
+                    {
+                        <tr>
+                            <td>@r.StockOutNo</td>
+                            <td>@r.ItemCode</td>
+                            <td>@r.ItemName</td>
+                            <td>@r.Quantity</td>
+                            <td>@r.ApplyDate.ToString("yyyy-MM-dd")</td>
+                            <td>
+                                <span class="badge @(r.Status == 0 ? "badge-pending" : r.Status == 1 ? "badge-approved" : "badge-rejected")">
+                                    @r.StatusText
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="6" style="text-align:center;color:#888">暂无领用记录</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 弹出窗口 -->
+<div id="itemPopup" class="popup-container">
+    <div class="popup-content">
+        <div class="popup-header">
+            <h3>选择物品</h3>
+            <button class="popup-close" onclick="closeItemPopup()">&times;</button>
+        </div>
+        <div class="popup-body">
+            <input type="text" id="popupSearch" class="form-control" style="margin-bottom:12px"
+                   placeholder="搜索物品编码或名称..." onkeyup="filterPopupItems()" />
+            <table>
+                <thead>
+                    <tr><th>编码</th><th>名称</th><th>库存</th><th>操作</th></tr>
+                </thead>
+                <tbody id="popupTableBody">
+                    @if (Model.Items != null)
+                    {
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr class="select-row popup-item" data-code="@item.ItemCode" data-name="@item.ItemName" data-qty="@item.Quantity">
+                                <td>@item.ItemCode</td>
+                                <td>@item.ItemName</td>
+                                <td>@item.Quantity</td>
+                                <td>
+                                    <button type="button" class="btn btn-primary btn-sm"
+                                            onclick="selectPopupItem('@item.ItemCode', '@item.ItemName', @item.Quantity)">
+                                        选择
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function updateItemInfo() {
+        var sel = document.querySelector('select[name="ItemCode"]');
+        var opt = sel.options[sel.selectedIndex];
+        document.getElementById('itemNameDisplay').value = opt.getAttribute('data-name') || '';
+        document.getElementById('itemQtyDisplay').value = opt.getAttribute('data-qty') || '';
+    }
+
+    function openItemPopup() {
+        document.getElementById('itemPopup').classList.add('active');
+    }
+
+    function closeItemPopup() {
+        document.getElementById('itemPopup').classList.remove('active');
+    }
+
+    function selectPopupItem(code, name, qty) {
+        document.querySelector('select[name="ItemCode"]').value = code;
+        document.getElementById('itemNameDisplay').value = name;
+        document.getElementById('itemQtyDisplay').value = qty;
+        closeItemPopup();
+    }
+
+    function filterPopupItems() {
+        var kw = document.getElementById('popupSearch').value.toLowerCase();
+        var rows = document.querySelectorAll('.popup-item');
+        rows.forEach(function(row) {
+            var code = (row.getAttribute('data-code') || '').toLowerCase();
+            var name = (row.getAttribute('data-name') || '').toLowerCase();
+            row.style.display = code.includes(kw) || name.includes(kw) ? '' : 'none';
+        });
+    }
+
+    // 点击遮罩关闭
+    document.getElementById('itemPopup').addEventListener('click', function(e) {
+        if (e.target === this) closeItemPopup();
+    });
+</script>
+}
